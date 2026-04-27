@@ -199,16 +199,28 @@ def home():
     return 'Bot is alive', 200
 
 def run_web_server():
+    """Runs Flask on 0.0.0.0:PORT in a separate thread."""
     port = int(os.environ.get('PORT', 10000))
-    app.run(host='0.0.0.0', port=port)
+    print(f"✅ Web server starting on port {port}...", flush=True)
+    # use_reloader=False is REQUIRED when running inside a thread
+    app.run(host='0.0.0.0', port=port, use_reloader=False, debug=False)
+
+def run_bot():
+    """Runs the Telegram bot with automatic restart on any error."""
+    while True:
+        try:
+            print("✅ البوت يعمل الآن...", flush=True)
+            bot.infinity_polling(timeout=60, long_polling_timeout=60)
+        except Exception as e:
+            print(f"⚠️  Bot polling crashed: {e} — restarting in 5s...", flush=True)
+            traceback.print_exc()
+            time.sleep(5)
 
 # ─── Entry Point ─────────────────────────────────────────────────────────────
-if __name__ == '__main__':
-    # Start Flask in a background daemon thread
-    web_thread = threading.Thread(target=run_web_server, daemon=True)
-    web_thread.start()
-    print(f"✅ Web server started on port {os.environ.get('PORT', 10000)}")
+# Run web server in a background thread (daemon=False keeps process alive)
+web_thread = threading.Thread(target=run_web_server, daemon=False)
+web_thread.start()
 
-    # Start the Telegram bot with long polling
-    print("✅ البوت يعمل الآن... (اضغط Ctrl+C في أي وقت لإيقافه)")
-    bot.infinity_polling()
+# Run bot in the main thread with an infinite retry loop
+run_bot()
+
